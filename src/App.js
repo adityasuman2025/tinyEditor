@@ -1,50 +1,126 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import abcjs from "abcjs";
+
 import { Editor } from '@tinymce/tinymce-react';
+// import tinymce from 'tinymce/tinymce'; //it has some errors in its code
 import { getTinymce } from '@tinymce/tinymce-react/lib/es2015/main/ts/TinyMCE';
 
 function App() {
+    const [count, setCount] = useState(0);
+
     function handleEditorChange(e) {
-        console.log(
-            'Content was updated:',
-            e.target.getContent()
-        );
+        // console.log(
+        //     'Content was updated:',
+        //     e.target.getContent()
+        // );
     }
 
     useEffect(() => {
-        getTinymce().PluginManager.add('inputBox', function(editor, url) {
-            /* Add a button that opens a window */
-            editor.ui.registry.addButton('inputBox', {
-                text: 'Add Input Box',
-                onAction: function() {
-                    /* Open window */
-                    // openDialog();
-                    editor.insertContent('<input type="text" />');
-                    // api.close();
-                }
+        //because tinyMCE takes some time to load
+        if (getTinymce()) {
+            getTinymce().PluginManager.add('inputBox', function(editor, url) {
+                /* Add a button that opens a window */
+                editor.ui.registry.addButton('inputBox', {
+                    text: 'Add Input Box',
+                    onAction: function() {
+                        /* Open window */
+                        // openDialog();
+                        editor.insertContent('<input type="text" />');
+                        // api.close();
+                    }
+                });
+                /* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
+                editor.ui.registry.addMenuItem('inputBox', {
+                    text: 'Add Input Box',
+                    onAction: function() {
+                        /* Open window */
+                        editor.insertContent('<input type="text" />');
+                    }
+                });
+                /* Return the metadata for the help plugin */
+                return {
+                    getMetadata: function() {
+                        return {
+                            name: 'Example plugin',
+                            url: 'http://exampleplugindocsurl.com'
+                        };
+                    }
+                };
             });
-            /* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
-            editor.ui.registry.addMenuItem('inputBox', {
-                text: 'Add Input Box',
-                onAction: function() {
-                    /* Open window */
-                    editor.insertContent('<input type="text" />');
-                }
+
+            getTinymce().PluginManager.add('music', function(editor, url) {
+                var openDialog = function() {
+                    return editor.windowManager.open({
+                        title: 'Enter Music',
+                        body: {
+                            type: 'panel',
+                            items: [
+                                {
+                                    type: 'textarea',
+                                    name: 'musicCode',
+                                }
+                            ]
+                        },
+                        buttons: [
+                            {
+                                type: 'cancel',
+                                text: 'Close'
+                            },
+                            {
+                                type: 'submit',
+                                text: 'Save',
+                                primary: true
+                            }
+                        ],
+                        onSubmit: function(api) {
+                            const data = api.getData();
+                            const musicCode = data.musicCode;
+
+                            //rendering the music code
+                            abcjs.renderAbc("hiddenMusic", musicCode);
+
+                            //geting the rendered music (SVG)
+                            const musicSVG = document.getElementById("hiddenMusic").innerHTML;
+                            editor.insertContent(musicSVG);
+                            api.close();
+                        }
+                    });
+                };
+                /* Add a button that opens a window */
+                editor.ui.registry.addButton('music', {
+                    text: 'music',
+                    onAction: function() {
+                        openDialog();
+                    }
+                });
+                /* Adds a menu item, which can then be included in any menu via the menu/menubar configuration */
+                editor.ui.registry.addMenuItem('music', {
+                    text: 'music',
+                    onAction: function() {
+                        openDialog();
+                    }
+                });
+                /* Return the metadata for the help plugin */
+                return {
+                    getMetadata: function() {
+                        return {
+                            name: 'Music plugin',
+                            url: 'http://exampleplugindocsurl.com'
+                        };
+                    }
+                };
             });
-            /* Return the metadata for the help plugin */
-            return {
-                getMetadata: function() {
-                    return {
-                        name: 'Example plugin',
-                        url: 'http://exampleplugindocsurl.com'
-                    };
-                }
-            };
-        });
-    }, []);
+        } else {
+            setTimeout(function() {
+                setCount(count + 1);
+            }, 100);
+        }
+    }, [count]);
 
     return (
         <>
+            <div id="hiddenMusic" style={{ "display": "none" }}></div>
             {/* <audio controls="controls" src="[blobURL]" type="audio/mp3" /> */}
             <Editor
                 apiKey='75qbf7bojriy2s32x8l5f2vldsxva4hbdgdgu0fh6oo7tc5z'
@@ -56,14 +132,18 @@ function App() {
                     autosave_ask_before_unload: true,
                     powerpaste_allow_local_images: true,
                     menubar: true,
+                    extended_valid_elements: "svg[*],defs[*],pattern[*],desc[*],metadata[*],g[*],mask[*],path[*],line[*],marker[*],rect[*],circle[*],ellipse[*],polygon[*],polyline[*],linearGradient[*],radialGradient[*],stop[*],image[*],view[*],text[*],textPath[*],title[*],tspan[*],glyph[*],symbol[*],switch[*],use[*]", //tiny editor does not support svg by default
                     plugins: [
-                        'inputBox a11ychecker advcode advlist anchor autolink codesample fullscreen help image imagetools tinydrive',
+                        'music inputBox advcode advlist anchor autolink codesample fullscreen help image imagetools tinydrive',
                         ' lists link media noneditable powerpaste preview',
                         ' searchreplace table template tinymcespellchecker visualblocks wordcount tiny_mce_wiris'
                     ],
-                    external_plugins: { tiny_mce_wiris: 'https://www.wiris.net/demo/plugins/tiny_mce/plugin.js' },
+                    external_plugins: {
+                        tiny_mce_wiris: 'https://www.wiris.net/demo/plugins/tiny_mce/plugin.js',
+                        // abc: 'https://www.abcjs.net/abcjs-plugin-min.js'
+                    },
                     toolbar:
-                        'inputBox | a11ycheck undo redo | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | link image media | spellchecker | tiny_mce_wiris_formulaEditor | tiny_mce_wiris_formulaEditorChemistry',
+                        'music inputBox | undo redo | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | link image media | spellchecker | tiny_mce_wiris_formulaEditor | tiny_mce_wiris_formulaEditorChemistry',
                     spellchecker_dialog: true,
                     spellchecker_ignore_list: [],
                     // tinydrive_demo_files_url: '/docs/demo/tiny-drive-demo/demo_files.json',
